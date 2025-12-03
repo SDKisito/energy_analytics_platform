@@ -1,17 +1,3 @@
-import React, { useState } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
-import Select from '../../../components/ui/Select';
-
-interface ReportGeneratorProps {
-  className?: string;
-}
-import React, { useState, useEffect } from "react";
-import jsPDF from "jspdf";
-
-type ReportType = "monthly" | "quarterly" | "yearly";
-type ReportFormat = "pdf";
-
 import React, { useState, useEffect } from "react";
 import jsPDF from "jspdf";
 
