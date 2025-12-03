@@ -29,15 +29,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: 'npm'
+          cache: 'none'
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install dependencies (force)
+        run: npm install --legacy-peer-deps
 
       - name: Build app
         run: npm run build
 
-      # Fix SPA routes -> copy index.html to 404.html
       - name: Create 404.html for SPA routing
         run: cp build/index.html build/404.html
 
