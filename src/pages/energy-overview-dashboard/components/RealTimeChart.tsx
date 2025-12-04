@@ -20,13 +20,68 @@ interface RealTimeChartProps {
 const RealTimeChart = ({ data, className = '' }: RealTimeChartProps) => {
   const [isLive, setIsLive] = useState(true);
   const [selectedFacility, setSelectedFacility] = useState<string>('all');
+  const [localData, setLocalData] = useState<ConsumptionDataPoint[]>([]);
+
+  // Initialiser avec des données locales si aucune donnée n'est fournie
+  useEffect(() => {
+    if (data && data.length > 0) {
+      setLocalData(data);
+    } else {
+      // Générer des données de démonstration
+      const generateData = () => {
+        const now = Date.now();
+        const facilities = ['Hôtel de Ville', 'Complexe Sportif', 'Bibliothèque'];
+        const newData: ConsumptionDataPoint[] = [];
+        
+        for (let i = 29; i >= 0; i--) {
+          const timestamp = new Date(now - i * 60000).toISOString();
+          facilities.forEach((facility) => {
+            newData.push({
+              timestamp,
+              value: 50 + Math.random() * 100,
+              facility,
+              meterType: 'Électricité',
+            });
+          });
+        }
+        return newData;
+      };
+      
+      setLocalData(generateData());
+    }
+  }, [data]);
+
+  // Mise à jour en temps réel
+  useEffect(() => {
+    if (!isLive) return;
+
+    const interval = setInterval(() => {
+      setLocalData((prev) => {
+        const facilities = ['Hôtel de Ville', 'Complexe Sportif', 'Bibliothèque'];
+        const now = new Date().toISOString();
+        const newPoints: ConsumptionDataPoint[] = facilities.map((facility) => ({
+          timestamp: now,
+          value: 50 + Math.random() * 100,
+          facility,
+          meterType: 'Électricité',
+        }));
+
+        // Garder seulement les 30 dernières minutes
+        const allData = [...prev, ...newPoints];
+        const cutoffTime = Date.now() - 30 * 60000;
+        return allData.filter((d) => new Date(d.timestamp).getTime() > cutoffTime);
+      });
+    }, 5000); // Mise à jour toutes les 5 secondes
+
+    return () => clearInterval(interval);
+  }, [isLive]);
 
   const facilities = ['all', 'Hôtel de Ville', 'Complexe Sportif', 'Bibliothèque'];
 
   const filteredData =
     selectedFacility === 'all'
-      ? data
-      : data.filter((d) => d.facility === selectedFacility);
+      ? localData
+      : localData.filter((d) => d.facility === selectedFacility);
 
   const aggregatedData = filteredData.reduce((acc, curr) => {
     const existing = acc.find((item) => item.timestamp === curr.timestamp);
@@ -120,42 +175,51 @@ const RealTimeChart = ({ data, className = '' }: RealTimeChartProps) => {
       </div>
 
       <div className="p-4">
-        <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={aggregatedData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-            <XAxis
-              dataKey="timestamp"
-              tickFormatter={formatXAxis}
-              stroke="var(--color-muted-foreground)"
-              style={{ fontSize: '12px' }}
-            />
-            <YAxis
-              stroke="var(--color-muted-foreground)"
-              style={{ fontSize: '12px' }}
-              label={{
-                value: 'kWh',
-                angle: -90,
-                position: 'insideLeft',
-                style: { fontSize: '12px', fill: 'var(--color-muted-foreground)' },
-              }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend
-              wrapperStyle={{ fontSize: '12px' }}
-              iconType="line"
-              iconSize={12}
-            />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke="var(--color-primary)"
-              strokeWidth={2}
-              dot={false}
-              name="Consommation"
-              animationDuration={300}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        {aggregatedData.length === 0 ? (
+          <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+            <div className="text-center">
+              <Icon name="LineChart" size={48} className="mx-auto mb-3 opacity-50" />
+              <p className="text-sm">Chargement des données en temps réel...</p>
+            </div>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={400}>
+            <LineChart data={aggregatedData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis
+                dataKey="timestamp"
+                tickFormatter={formatXAxis}
+                stroke="var(--color-muted-foreground)"
+                style={{ fontSize: '12px' }}
+              />
+              <YAxis
+                stroke="var(--color-muted-foreground)"
+                style={{ fontSize: '12px' }}
+                label={{
+                  value: 'kWh',
+                  angle: -90,
+                  position: 'insideLeft',
+                  style: { fontSize: '12px', fill: 'var(--color-muted-foreground)' },
+                }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend
+                wrapperStyle={{ fontSize: '12px' }}
+                iconType="line"
+                iconSize={12}
+              />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke="var(--color-primary)"
+                strokeWidth={2}
+                dot={false}
+                name="Consommation"
+                animationDuration={300}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );
