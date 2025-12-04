@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import Icon from '../../../components/AppIcon';
 import { SiteHeatmapData } from '../types';
 
@@ -7,9 +8,53 @@ interface SiteHeatmapProps {
   className?: string;
 }
 
+interface SparklineData {
+  value: number;
+}
+
 const SiteHeatmap = ({ sites, className = '' }: SiteHeatmapProps) => {
   const [selectedSite, setSelectedSite] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
+  const [sparklineData, setSparklineData] = useState<Record<string, SparklineData[]>>({});
+
+  // Générer des données de mini-graphiques pour chaque site
+  useEffect(() => {
+    const generateSparklineData = () => {
+      const data: Record<string, SparklineData[]> = {};
+      sites.forEach((site) => {
+        const points: SparklineData[] = [];
+        const baseValue = site.consumption;
+        for (let i = 0; i < 12; i++) {
+          const variation = (Math.random() - 0.5) * (baseValue * 0.2);
+          points.push({ value: baseValue + variation });
+        }
+        data[site.id] = points;
+      });
+      return data;
+    };
+
+    setSparklineData(generateSparklineData());
+
+    // Mise à jour périodique
+    const interval = setInterval(() => {
+      setSparklineData((prev) => {
+        const newData = { ...prev };
+        sites.forEach((site) => {
+          if (newData[site.id]) {
+            const lastValue = newData[site.id][newData[site.id].length - 1].value;
+            const variation = (Math.random() - 0.5) * (site.consumption * 0.15);
+            newData[site.id] = [
+              ...newData[site.id].slice(1),
+              { value: lastValue + variation },
+            ];
+          }
+        });
+        return newData;
+      });
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [sites]);
 
   const getIntensityColor = (intensity: number) => {
     if (intensity >= 80) return 'bg-error';
@@ -78,6 +123,7 @@ const SiteHeatmap = ({ sites, className = '' }: SiteHeatmapProps) => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {sites.map((site) => {
               const heightPercentage = (site.consumption / maxConsumption) * 100;
+              const siteSparkline = sparklineData[site.id] || [];
               return (
                 <div
                   key={site.id}
@@ -120,6 +166,30 @@ const SiteHeatmap = ({ sites, className = '' }: SiteHeatmapProps) => {
                       </span>
                     </div>
                   </div>
+
+                  {/* Mini graphique de tendance */}
+                  {siteSparkline.length > 0 && (
+                    <div className="mb-3 h-12 bg-muted/30 rounded">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={siteSparkline}>
+                          <Line
+                            type="monotone"
+                            dataKey="value"
+                            stroke={
+                              site.intensity >= 80
+                                ? 'hsl(var(--error))'
+                                : site.intensity >= 60
+                                ? 'hsl(var(--warning))'
+                                : 'hsl(var(--primary))'
+                            }
+                            strokeWidth={2}
+                            dot={false}
+                            animationDuration={300}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
 
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div
