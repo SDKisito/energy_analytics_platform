@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import Icon from '../../../components/AppIcon';
 import { SiteHeatmapData } from '../types';
